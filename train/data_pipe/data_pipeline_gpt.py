@@ -8,12 +8,10 @@ import random
 import json
 from sys_prompts import revise_prompt
 
-# api_key="Ys3vC7zhfJHofZjEovqc2AIO@3695"
-api_key="7EPX8pQ3dWlGD5ACnlc9qX0L@3695"
-# api_key="JthCt5ls1kP2M7HlXOtIrIWu@420"
+api_key=""
 os.environ["OPENAI_API_KEY"]=api_key
-os.environ["OPENAI_API_BASE"]="http://v2.open.venus.oa.com/llmproxy"
-API_URL = "http://v2.open.venus.oa.com/llmproxy/chat/completions"
+os.environ["OPENAI_API_BASE"]=""
+API_URL = ""
 
 # Function to encode the image
 def encode_image(image_path):
@@ -97,20 +95,11 @@ if __name__ == '__main__':
     # ans = "The most notable feature of the building's exterior is the large, red and white clock mounted on the side of the building above a high arch. The clock's prominent size and striking color make it an eye-catching focal point. Additionally, it is unique due to its location above a door and the presence of statues surrounding the clock. This design contributes to the building's aesthetic appeal and helps it stand out, making it easily recognizable and memorable."
     # pred = "The most notable feature of the building's exterior is the large red and white clock mounted on the wall. The clock, with its striking red frame and white numerals, stands out against the tan-colored brick wall. Its prominent placement and classic design make it the focal point of the building's exterior. The clock is both a functional and decorative element, providing the practical purpose of telling the time while also adding visual embellishment that enhances the overall appearance of the building. Outside of the clock, there are also several statues of people and a bust positioned at the top of the clock, adding to the historical and aesthetic significance of the building."
     
-    
-    # preds = json.load(open('model_finetune_15_s32_outputs_coco.json', 'r'))
-    preds = json.load(open('llada_v_s32_outputs_vicrit_others.json', 'r'))
+    preds = json.load(open('rediff_base_outputs_vicrit.json', 'r'))
     res = []
     print(len(preds))
-    # preds = preds[:2500]
-    # preds = preds[1700:3400]
-    preds = preds[2500:]
 
-    if os.path.exists('o4_revise_base_s32_vicrit_2.json'):
-       res = json.load(open('o4_revise_base_s32_vicrit_2.json', 'r'))
-    start = len(res)
-
-    for item in tqdm(preds[start:]):
+    for item in tqdm(preds):
         ques = item['ques'].replace('<image>', '').strip()
         ans = item['ans']
         pred = item['pred']
@@ -122,11 +111,5 @@ if __name__ == '__main__':
 
         item['revise'] = response
         res.append(item)
-        # avoid disk failure
-        try:
-            with open('o4_revise_base_s32_vicrit_2_fake.json', 'w') as f:
-                json.dump(res, f, indent=4)
-        except:
-            break
-        with open('o4_revise_base_s32_vicrit_2.json', 'w') as f:
+        with open('o4_revise_rediff_vicrit.json', 'w') as f:
             json.dump(res, f, indent=4)

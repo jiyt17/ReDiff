@@ -26,23 +26,9 @@ import argparse
 prompt_interval_steps = 25
 gen_interval_steps = 7
 transfer_ratio = 0.25
-use_cache = False  # In this demo, we consider using dLLM-Cache(https://github.com/maomaocun/dLLM-cache) to speed up generation. Set to True to enable caching or False to test without it.
-
+use_cache = False  
 warnings.filterwarnings("ignore")
 
-# res = json.load(open('model_outputs_llava-1.5.json', 'r'))
-# new_res = []
-# for item in res:
-#     new_res += item
-# print(len(new_res))
-# with open('model_outputs_llava-1.5.json', 'w') as f:
-#     json.dump(new_res, f, indent=4)
-
-# res = []
-# for i in range(8):
-#     res += json.load(open(f'/group/40005/auroraji/LLaDA-V/train/data_pipe/model_finetune_19_s128_outputs_vicrit_others/outputs_{i}.json'))
-# with open('model_finetune_19_s128_outputs_vicrit_others.json', 'w') as f:
-#     json.dump(res, f, indent=4)
 
 def eval_model(args):
 
@@ -52,7 +38,6 @@ def eval_model(args):
     devices = range(dist.local_rank(), torch.cuda.device_count(), dist.local_size())
     torch.cuda.set_device(devices[0])
 
-    # pretrained = "/group/40034/auroraji/pretrained/LLaDA-V"
     pretrained = args.pretrained
     model_name = "llava_llada"
     tokenizer, model, image_processor, max_length = load_pretrained_model(pretrained, None, model_name, attn_implementation="sdpa", device_map=devices[0])  # Add any other thing you want to pass in llava_model_args
@@ -74,7 +59,7 @@ def eval_model(args):
         print("Testing without cache")
 
     # read data and split
-    data_list = json.load(open('/group/40005/public_datasets/ViCrit-Train/vicrit_train_others.json', 'r'))
+    data_list = json.load(open('ViCrit-Train/vicrit_train_others.json', 'r'))
     if args.steps == 128:
         data_list = data_list[30000:35000]
     elif args.steps == 32:
@@ -84,12 +69,9 @@ def eval_model(args):
     data_list = data_list[global_rank::world_size]
 
     conv_template = "llava_llada" 
-    image_folder = "/group/40005/public_datasets/ViCrit-Train/images"
+    image_folder = "ViCrit-Train/images"
 
-    if args.revise == 'True':
-        revise = True
-    else:
-        revise = False
+    revise = args.revise
 
     res = []
     for item in tqdm(data_list, total=len(data_list), disable=global_rank != 0):
@@ -130,9 +112,6 @@ def eval_model(args):
 
         res.append({'img': img_path, 'ques': question, 'ans': answer, 'pred': text_outputs[0]})
 
-        # # save for each gpu
-        # with open(f"model_finetune_19_s{args.steps}_outputs_vicrit_others/outputs_{global_rank}.json", 'w') as f:
-        #     json.dump(res, f, indent=4)
 
     if dist.size() > 1:
         res = dist.all_gather(res)
@@ -146,9 +125,9 @@ def eval_model(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Inference script for LLaDA-V model to make data")
-    parser.add_argument("--pretrained", type=str, default="/group/40034/auroraji/pretrained/LLaDA-V", help="Path to the pretrained model")
-    parser.add_argument("--output", type=str, default="model_finetune_15_s128_outputs_vicrit_others_2.json", help="Path to save the model outputs")
+    parser.add_argument("--pretrained", type=str, default="pretrained_model_path", help="Path to the pretrained model")
+    parser.add_argument("--output", type=str, default="rediff_base_outputs_vicrit.json", help="Path to save the model outputs")
     parser.add_argument("--steps", type=int, default=128, help="Number of steps for generation")
-    parser.add_argument("--revise", type=str, default='True')
+    parser.add_argument("--revise", action="store_true", default=False, help="revise or not")
     args = parser.parse_args()
     eval_model(args) 

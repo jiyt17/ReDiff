@@ -26,17 +26,9 @@ import warnings
 prompt_interval_steps = 25
 gen_interval_steps = 7
 transfer_ratio = 0.25
-use_cache = False  # In this demo, we consider using dLLM-Cache(https://github.com/maomaocun/dLLM-cache) to speed up generation. Set to True to enable caching or False to test without it.
+use_cache = False
 
 warnings.filterwarnings("ignore")
-
-# res = json.load(open('model_outputs_llava-1.5.json', 'r'))
-# new_res = []
-# for item in res:
-#     new_res += item
-# print(len(new_res))
-# with open('model_outputs_llava-1.5.json', 'w') as f:
-#     json.dump(new_res, f, indent=4)
 
 
 def eval_model(args):
@@ -47,17 +39,12 @@ def eval_model(args):
     devices = range(dist.local_rank(), torch.cuda.device_count(), dist.local_size())
     torch.cuda.set_device(devices[0])
 
-    # pretrained = "/group/40034/auroraji/pretrained/LLaDA-V"
     pretrained = args.pretrained
     model_name = "llava_llada"
     tokenizer, model, image_processor, max_length = load_pretrained_model(pretrained, None, model_name, attn_implementation="sdpa", device_map=devices[0])  # Add any other thing you want to pass in llava_model_args
     model.eval()
 
-    if 'base' in pretrained:
-        revise = False
-    else:
-        revise = True
-    # revise = False
+    revise = args.revise
 
     if use_cache:
         dLLMCache.new_instance(
@@ -135,10 +122,11 @@ def eval_model(args):
 if __name__ == "__main__":
     # read args
     parser = argparse.ArgumentParser(description="Evaluate LLaDA-V model on caption benchmarks")
-    parser.add_argument("--pretrained", type=str, default="/group/40034/auroraji/pretrained/LLaDA-V", help="Path to the pretrained model")
-    parser.add_argument("--output", type=str, default="/group/40034/auroraji/CapMAS/predictions", help="Path to save the model outputs")
-    parser.add_argument("--image_dir", type=str, default="/group/40005/auroraji/CapArena/data/caparena_auto_docci_600", help="Directory containing images for evaluation")
+    parser.add_argument("--pretrained", type=str, default="pretrained/LLaDA-V", help="Path to the pretrained model")
+    parser.add_argument("--output", type=str, default="CapArena/predictions", help="Path to save the model outputs")
+    parser.add_argument("--image_dir", type=str, default="CapArena/data/caparena_auto_docci_600", help="Directory containing images for evaluation")
     parser.add_argument("--steps", type=int, default=128, help="Number of steps for generation")
+    parser.add_argument("--revise", action="store_true", default=False, help="revise or not")
     parser.add_argument("--revise-topk", type=float, default=None, help="Revise topk")
     parser.add_argument("--revise-start", type=float, default=1.0, help="Revise start")
     args = parser.parse_args()
