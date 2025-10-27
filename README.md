@@ -76,6 +76,13 @@ The code is largely based on the [LLaDA-V](https://github.com/ML-GSAI/LLaDA-V), 
 
 ## Citation
 
-
-
+```bibtex
+@article{ji2025denoising,
+  title={From Denoising to Refining: A Corrective Framework for Vision-Language Diffusion Model},
+  author={Ji, Yatai and Wang, Teng and Ge, Yuying and Liu, Zhiheng and Yang, Sidi and Shan, Ying and Luo, Ping},
+  journal={arXiv preprint arXiv:2510.19871},
+  year={2025}
+}
+}
+```
 
