@@ -38,9 +38,14 @@ The syntactic errors are injected by randomly replacing a fraction of tokens wit
 
 1. Training data preparation:
 
-We select detailed image captioning as the representative task to validate our framework on enhancing the generative capabilities of vision-language diffusion models.
+   We select detailed image captioning as the representative task to validate our framework on enhancing the generative capabilities of vision-language diffusion models.
 
-The data sources contain [ViCrit](https://huggingface.co/datasets/zyang39/ViCrit-Train), [LLaVA-1.5](https://huggingface.co/datasets/liuhaotian/LLaVA-Instruct-150K/blob/main/llava_v1_5_mix665k.json), [ShareGPT4V](https://huggingface.co/datasets/lmms-lab/LLaVA-OneVision-Data), utilizing 160k, 20k and 80k data respectively.
+   The data sources contain [ViCrit](https://huggingface.co/datasets/zyang39/ViCrit-Train), [LLaVA-1.5](https://huggingface.co/datasets/liuhaotian/LLaVA-Instruct-150K/blob/main/llava_v1_5_mix665k.json), [ShareGPT4V](https://huggingface.co/datasets/lmms-lab/LLaVA-OneVision-Data), utilizing 160k, 20k and 80k data respectively.
+
+   ```bash
+   cd train/data_pipe
+   python preprocess_vicrit.py
+   ```
 
 2. Training script:
    ```bash
@@ -50,12 +55,49 @@ The data sources contain [ViCrit](https://huggingface.co/datasets/zyang39/ViCrit
 
 ### Online self-correction learning
 
+In the second stage, ReDiff-base generates its own flawed "drafts". These drafts, containing the model's grammatical and hallucinatory errors, are then revised by an expert AI assistant. 
+
 1. Data praparation with o4-mini.
    ```bash
    cd train/data_pipe
    bash inference.sh
    python data_pipeline_gpt.py
    python process.py
+   ```
+
+   Data sample:
+   ```python
+   {
+        "image": "ViCrit-Train/images/535.jpg",
+        "conversations": [
+            {
+                "from": "human",
+                "value": "<image>\nWrite a detailed description of the given image."
+            },
+            {
+                "from": "gpt",
+                "value": "In the image a smiling black man is standing outside a brick wall. He is holding a a gray magazine with a white cover on it. The man dressed in a gray suit suit and a white shirt shirt with a yellow tie. His tie tie is a gold color and has blue stripes.  He is a wearing a brown hat with a a white logo on it.  The magazine he is holding has a picture of on and it and a black background with a white text on it. The title \"the scene\" is also visible in the magazine. The man appears to be the featured on the front cover of the magazine."
+            }
+        ],
+        "revise": [
+            {
+                "org": "a white shirt shirt",
+                "target": "a light blue shirt"
+            },
+            {
+                "org": "tie tie",
+                "target": "gold tie"
+            },
+            {
+                "org": "a picture of on and it",
+                "target": "a man on the front cover"
+            },
+            {
+                "org": "black background",
+                "target": "red background"
+            }
+        ]
+    }
    ```
 
 2. Training script:
