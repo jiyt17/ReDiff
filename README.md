@@ -1,10 +1,10 @@
 # From Denoising to Refining: A Corrective Framework for Vision-Language Diffusion Model
-[![arXiv](https://img.shields.io/badge/Paper-arXiv-red.svg)](https://arxiv.org/)
+[![arXiv](https://img.shields.io/badge/Paper-arXiv-red.svg)](https://arxiv.org/pdf/2510.19871)
 [![deploy](https://img.shields.io/badge/Hugging%20Face-LLaDA_V-FFEB3B)](https://huggingface.co/jiyatai/ReDiff)
 
   
 ## Introduction
- We introduce ReDiff, a refining-enhanced vision-language diffusion model.
+We introduce ReDiff, a refining-enhanced vision-language diffusion model.
 
 <img src="assets/teaser.jpg">
 
@@ -36,7 +36,11 @@ We train model to revise two types of synthetic errors: syntactic errors and sem
 
 The syntactic errors are injected by randomly replacing a fraction of tokens with other tokens from the vocabulary, and semantic hallucinations are from ViCrit dataset, which provides pairs of correct captions and captions with factual errors.
 
-1. Training data preparation:...
+1. Training data preparation:
+
+We select detailed image captioning as the representative task to validate our framework on enhancing the generative capabilities of vision-language diffusion models.
+
+The data sources contain [ViCrit](https://huggingface.co/datasets/zyang39/ViCrit-Train), [LLaVA-1.5](https://huggingface.co/datasets/liuhaotian/LLaVA-Instruct-150K/blob/main/llava_v1_5_mix665k.json), [ShareGPT4V](https://huggingface.co/datasets/lmms-lab/LLaVA-OneVision-Data), utilizing 160k, 20k and 80k data respectively.
 
 2. Training script:
    ```bash
@@ -62,7 +66,7 @@ The syntactic errors are injected by randomly replacing a fraction of tokens wit
 
 
 ## Evaluation
-We tend to improve the generation quality of vision-language diffusion model, and demonstrate the effectiveness of refining-enhanced diffusion framework on three detailed image caption benchmarks: CapMAS (3 metrics: CLAIR for overall caption quality, Coverage for the comprehensiveness of the description, and Factuality for the accuracy of the content), CapArena (score based on pairwise comparison) and DetailCaps-4870 (metric: CAPTURE).
+We tend to improve the generation quality of vision-language diffusion model, and demonstrate the effectiveness of refining-enhanced diffusion framework on three detailed image caption benchmarks: [CapMAS](https://github.com/adobe-research/CapMAS) (3 metrics: CLAIR for overall caption quality, Coverage for the comprehensiveness of the description, and Factuality for the accuracy of the content), [CapArena](https://github.com/njucckevin/CapArena) (score based on pairwise comparison) and [DetailCaps-4870](https://github.com/foundation-multimodal-models/CAPTURE) (metric: CAPTURE).
 
 Evaluation script:
    ```bash
@@ -82,7 +86,6 @@ The code is largely based on the [LLaDA-V](https://github.com/ML-GSAI/LLaDA-V), 
   author={Ji, Yatai and Wang, Teng and Ge, Yuying and Liu, Zhiheng and Yang, Sidi and Shan, Ying and Luo, Ping},
   journal={arXiv preprint arXiv:2510.19871},
   year={2025}
-}
 }
 ```
 
