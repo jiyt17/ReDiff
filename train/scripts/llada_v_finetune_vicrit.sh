@@ -23,17 +23,16 @@ echo "node_rank ${RANK}"
 echo "gpu_num ${gpu_num}"
 echo "num_node ${num_node}"
 
-LLM_VERSION="/group/40005/auroraji/pretrained/LLaDA-V"
-# LLM_VERSION="/group/40005/auroraji/LLaDA-V/train/exp/llada_v_finetune_base/checkpoint-2000"
+LLM_VERSION="/path/to/LLaDA-V"
 LLM_VERSION_CLEAN="${LLM_VERSION//\//_}"
-VISION_MODEL_VERSION="/group/40005/auroraji/pretrained/siglip2-so400m-patch14-384"
+VISION_MODEL_VERSION="pretrained/siglip2-so400m-patch14-384"
 VISION_MODEL_VERSION_CLEAN="${VISION_MODEL_VERSION//\//_}"
 
 ############### Finetune ################
 
 PROMPT_VERSION="llava_llada"
 
-BASE_RUN_NAME="llada_v_finetune_23"
+BASE_RUN_NAME="rediff_base"
 # OUTPUT_DIR="/home/jyt-tmp/LLada-V/$BASE_RUN_NAME"
 OUTPUT_DIR="exp/$BASE_RUN_NAME"
 echo "BASE_RUN_NAME: ${BASE_RUN_NAME}"
@@ -43,10 +42,11 @@ ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node=${gpu_num} --nnodes=${num_no
     --deepspeed scripts/zero3.json \
     --model_name_or_path ${LLM_VERSION} \
     --version ${PROMPT_VERSION} \
-    --data_path "/group/40005/public_datasets/ViCrit-Train/vicrit_train_equaltokens.json" \
-    --image_folder "/group/40005/public_datasets/ViCrit-Train/images" \
-    --image_folder_2 "/group/40005/public_datasets" \
+    --data_path "vicrit_llava1-5_sharegpt4v.json" \
+    --image_folder "ViCrit-Train/images" \
+    --image_folder_2 "public_datasets" \
     --video_folder "" \
+    --revise True \
     --mm_tunable_parts="mm_vision_tower,mm_mlp_adapter,mm_language_model" \
     --mm_vision_tower_lr=1e-6 \
     --vision_tower ${VISION_MODEL_VERSION} \

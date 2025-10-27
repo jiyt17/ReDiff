@@ -174,6 +174,7 @@ class TrainingArguments(transformers.TrainingArguments):
     verbose_logging: bool = field(default=False)
     attn_implementation: str = field(default="flash_attention_2", metadata={"help": "Use transformers attention implementation."})
     use_conversation_mask: bool=field(default=True)
+    revise: bool=field(default=True, metadata={"help": "Whether to enable the revise training."})
 
 
 # @dataclass
@@ -1280,31 +1281,6 @@ class LazySupervisedDataset(Dataset):
                 cur_data_dict = json.load(file)
                 rank0_print(f"Loaded {len(cur_data_dict)} samples from {data_path}")
                 self.list_data_dict.extend(cur_data_dict)
-            # add llava-1.5
-            # cur_len = len(cur_data_dict)
-            # llava_data_path = "/group/40005/auroraji/LLaDA-V/train/data_pipe/llava-1.5-caption.json"
-            # rank0_print(f"Loading {llava_data_path}")
-            # with open(llava_data_path, "r") as file:
-            #     llava_data_dict = json.load(file)
-            #     random.shuffle(llava_data_dict)
-            #     # llava_data_dict = llava_data_dict[:cur_len]
-            #     rank0_print(f"Loaded {len(llava_data_dict)} samples from {llava_data_path}")
-            #     self.list_data_dict.extend(llava_data_dict)
-            # # add sharegpt4v
-            # share_data_path = "/group/40005/public_datasets/ShareGPT4v/jsons/sharegpt4v_offline.json"
-            # rank0_print(f"Loading {share_data_path}")
-            # with open(share_data_path, "r") as file:
-            #     share_data_dict = json.load(file)
-            #     rank0_print(f"Loaded {len(share_data_dict)} samples from {share_data_path}")
-            #     self.list_data_dict.extend(share_data_dict)
-            # add ViCrit for online
-            ViCrit_data_path = "/group/40005/public_datasets/ViCrit-Train/vicrit_train_others.json"
-            rank0_print(f"Loading {ViCrit_data_path}")
-            with open(ViCrit_data_path, "r") as file:
-                # ViCrit_data_dict = json.load(file)[15000:25000]
-                ViCrit_data_dict = json.load(file)[45000:53000]
-                rank0_print(f"Loaded {len(ViCrit_data_dict)} samples from {ViCrit_data_path}")
-                self.list_data_dict.extend(ViCrit_data_dict)
 
 
         rank0_print(f"Loaded {len(self.list_data_dict)} samples")
@@ -1426,159 +1402,6 @@ class LazySupervisedDataset(Dataset):
         except Exception as e:
             raise e
 
-    def _get_item_vicrit(self, i) -> Dict[str, torch.Tensor]:
-        sources = self.list_data_dict[i]
-        if isinstance(i, int):
-            sources = [sources]
-        assert len(sources) == 1, "Don't know why it is wrapped to a list"  # FIXME
-        # if "conversations_hal" in sources[0]:
-        #     hal_version = True
-        # else:
-        #     hal_version = False
-        hal_version = False
-
-        if "image" in sources[0]:
-            image_file = self.list_data_dict[i]["image"]
-            if type(image_file) is list:
-                image = [self.process_image(f) for f in image_file]
-                # Handling multi images
-                # overwrite to process with simple pad 
-                if len(image_file) > 1:
-                    image = [self.process_image(f, "pad") for f in image_file]
-                    image = [[im[0], im[1], "image"] for im in image]
-            else:
-                image = [self.process_image(image_file)]
-            org_sources = copy.deepcopy(sources)
-            sources = preprocess_multimodal(copy.deepcopy([e["conversations"] for e in sources]), self.data_args)
-            if hal_version:
-                sources_hal = preprocess_multimodal(copy.deepcopy([e["conversations_hal"] for e in org_sources]), self.data_args)
-
-        elif "video" in sources[0]:
-            video_file = self.list_data_dict[i]["video"]
-            video_folder = self.data_args.video_folder
-            video_file = os.path.join(video_folder, video_file)
-            suffix = video_file.split(".")[-1]
-            if not os.path.exists(video_file):
-                print("File {} not exist!".format(video_file))
-
-            try:
-                if "ShareGPTVideo" in video_file:
-                    frame_files = [os.path.join(video_file, f) for f in os.listdir(video_file) if os.path.isfile(os.path.join(video_file, f))]
-                    frame_files.sort()  # Ensure the frames are sorted if they are named sequentially
-
-                    # TODO: Hard CODE: Determine the indices for uniformly sampling 10 frames
-                    if self.data_args.force_sample:
-                        num_frames_to_sample = self.data_args.frames_upbound
-                    else:
-                        num_frames_to_sample = 10
-
-                    avg_fps = 2
-                    
-                    total_frames = len(frame_files)
-                    sampled_indices = np.linspace(0, total_frames - 1, num_frames_to_sample, dtype=int)
-
-
-                    frame_time = [i/2 for i in sampled_indices]
-                    frame_time = ",".join([f"{i:.2f}s" for i in frame_time])
-
-                    video_time = total_frames / avg_fps
-
-                    # Read and store the sampled frames
-                    video = []
-                    for idx in sampled_indices:
-                        frame_path = frame_files[idx]
-                        try:
-                            with Image.open(frame_path) as img:
-                                frame = img.convert("RGB")
-                                video.append(frame)
-                        except IOError:
-                            print(f"Failed to read frame at path: {frame_path}")
-                else:
-                    video, video_time, frame_time, num_frames_to_sample = process_video_with_decord(video_file, self.data_args)
-
-                processor = self.data_args.image_processor
-                image = processor.preprocess(video, return_tensors="pt")["pixel_values"]
-                if self.data_args.add_time_instruction:
-                    time_instruciton = f"The video lasts for {video_time:.2f} seconds, and {num_frames_to_sample} frames are uniformly sampled from it. These frames are located at {frame_time}.Please answer the following questions related to this video."
-                    sources[0]["conversations"][0]["value"] = f'{DEFAULT_IMAGE_TOKEN}\n{time_instruciton}\n{sources[0]["conversations"][0]["value"].replace(DEFAULT_IMAGE_TOKEN, "")}'
-                image = [(image, video[0].size, "video")]
-                sources = preprocess_multimodal(copy.deepcopy([e["conversations"] for e in sources]), self.data_args)
-                # print(sources)
-            except Exception as e:
-                print(f"Error: {e}")
-                print(f"Failed to read video file: {video_file}")
-                return self._get_item(i + 1)
-        else:
-            sources = copy.deepcopy([e["conversations"] for e in sources])
-
-        has_image = ("image" in self.list_data_dict[i]) or ("video" in self.list_data_dict[i])
-        data_dict = preprocess(sources, self.tokenizer, has_image=has_image)
-        # rank0_print('org:', sources, data_dict['input_ids'][0].tolist(), data_dict['labels'][0].tolist())
-
-        if "prompt" in data_dict:
-            prompt = data_dict["prompt"]
-        else:
-            prompt = None
-
-        if isinstance(i, int):
-            data_dict = dict(input_ids=data_dict["input_ids"][0], labels=data_dict["labels"][0])
-
-        # image exist in the data
-        if "image" in self.list_data_dict[i]:
-            data_dict["image"] = image
-        elif "video" in self.list_data_dict[i]:
-            data_dict["image"] = image
-        elif self.data_args.is_multimodal:
-            # image does not exist in the data, but the model is multimodal
-            crop_size = self.data_args.image_processor.crop_size
-            data_dict["image"] = [
-                (torch.zeros(1, 3, crop_size["height"], crop_size["width"]), (crop_size["width"], crop_size["height"]), "text"),
-            ]
-        # prompt exist in the data
-        if prompt is not None:
-            data_dict["prompt"] = prompt
-
-        data_dict["id"] = self.list_data_dict[i].get("id", i)
-        if conversation_lib.default_conversation.version == "llada_plain":
-            data_dict["is_plain"] = True
-            data_dict["is_llada"] = True
-        elif conversation_lib.default_conversation.version == "llava_llada":
-            data_dict["is_plain"] = False
-            data_dict["is_llada"] = True
-
-        if hal_version:
-            data_dict_hal = preprocess(sources_hal, self.tokenizer, has_image=has_image)
-            # rank0_print('hal:', data_dict_hal['input_ids'][0].tolist(), data_dict_hal['labels'][0].tolist())
-            # rank0_print(data_dict["input_ids"][0].shape, data_dict_hal["input_ids"][0].shape, data_dict["labels"][0].shape)
-            hal_sol = self.tokenizer.encode('dummy ' + org_sources[0]['ori_sol'])
-            # hal_sol_tokens = self.tokenizer.tokenize('dummy ' + org_sources[0]['ori_sol'])
-            # rank0_print('hal_org:', len(hal_sol), hal_sol[1:], org_sources[0]['ori_sol'])
-            hal_sol = hal_sol[1:]
-            hal_st = -1
-            # revise_mask1 = data_dict["input_ids"][0] != data_dict_hal["input_ids"][0]
-            revise_indices = torch.zeros_like(data_dict["input_ids"], dtype=torch.bool)
-            for j in range(len(data_dict["input_ids"])):
-                if data_dict["input_ids"][j] == hal_sol[0]:
-                    match = True
-                    for t in range(len(hal_sol)):
-                        if data_dict["input_ids"][j+t] != hal_sol[t]:
-                            match = False
-                            break
-                    if match:
-                        hal_st = j
-                        break
-            if hal_st > 0:
-                revise_indices[hal_st: hal_st+len(hal_sol)] = True
-            # rank0_print(revise_mask1, revise_mask2)
-            # rank0_print(data_dict['input_ids'][revise_indices], data_dict['labels'][revise_indices])
-
-            data_dict['input_ids'] = data_dict_hal['input_ids'][0]
-            data_dict['revise_indices'] = revise_indices
-        
-        else:
-            data_dict['revise_indices'] = torch.zeros_like(data_dict["input_ids"], dtype=torch.bool)
-
-        return data_dict
 
     def _get_item(self, i) -> Dict[str, torch.Tensor]:
         sources = self.list_data_dict[i]
@@ -2250,9 +2073,7 @@ def train(attn_implementation=None):
     data_module = make_supervised_data_module(tokenizer=tokenizer, data_args=data_args, training_args=training_args)
     setattr(training_args, "use_webdataset", getattr(data_args, "use_webdataset"))
 
-    revise = True
-    # revise = False
-    model.decide_revise(revise)
+    model.decide_revise(training_args.revise)
     trainer = LLaVATrainer(model=model, tokenizer=tokenizer, args=training_args, **data_module)
 
 

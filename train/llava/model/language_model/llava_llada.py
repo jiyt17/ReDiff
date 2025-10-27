@@ -163,8 +163,7 @@ class LlavaLLaDAModelLM(LLaDAModelLM, LlavaMetaForCausalLM):
         else:
             inputs_embeds = self.get_model().embed_tokens(inputs)
         # print('after prepare, inputs:', inputs_embeds.shape)
-        # for lmms-eval
-        # revise = True
+        
         print('revise', revise, revise_topk)
         res = super().generate_with_embeds(inputs_embeds=inputs_embeds, revise=revise, revise_topk=revise_topk, revise_start=revise_start, fake_ans=fake_ans, **kwargs)
 
