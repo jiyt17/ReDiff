@@ -55,7 +55,7 @@ The syntactic errors are injected by randomly replacing a fraction of tokens wit
 
 ### Online self-correction learning
 
-In the second stage, ReDiff-base generates its own flawed "drafts". These drafts, containing the model's grammatical and hallucinatory errors, are then revised by an expert AI assistant. The training data for ReDiff-Base: [Huggingface](jiyatai/ReDiff_base_revise_o4).
+In the second stage, ReDiff-base generates its own flawed "drafts". These drafts, containing the model's grammatical and hallucinatory errors, are then revised by an expert AI assistant. The training data for ReDiff-Base: [Huggingface](https://huggingface.co/datasets/jiyatai/ReDiff_base_revise_o4).
 
 1. Data praparation with o4-mini.
    ```bash
